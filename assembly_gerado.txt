@@ -45,23 +45,35 @@ main:
     VLDR d0, [r0]
     LDR r0, =const_11
     VLDR d1, [r0]
-    VCVT.S32.F64 s30, d0
-    VCVT.S32.F64 s31, d1
-    VMOV r0, s30
-    VMOV r1, s31
-    BL __aeabi_idivmod
-    VMOV s30, r1
-    VCVT.F64.S32 d2, s30
+    @ Modulo sem BL: a - b * floor(a/b)
+    VDIV.F64 d31, d0, d1
+    VCVT.S32.F64 s30, d31
+    VCVT.F64.S32 d31, s30
+    VMUL.F64 d31, d31, d1
+    VSUB.F64 d2, d0, d31
 
 ; Linha 7
     LDR r0, =const_12
     VLDR d0, [r0]
     LDR r0, =const_13
     VLDR d1, [r0]
-    VMOV r0, r1, d0
-    VMOV r2, r3, d1
-    BL pow
-    VMOV d2, r0, r1
+    @ Potencia sem BL: converte expoente para inteiro
+    VCVT.S32.F64 s30, d1
+    VMOV r0, s30
+    @ Verifica se expoente e zero
+    CMP r0, #0
+    BLE pow_done_3
+    @ Inicializa resultado = base
+    VMOV.F64 d2, d0
+    @ Loop: multiplica base-1 vezes
+    SUB r0, r0, #1
+    CMP r0, #0
+    BLE pow_done_3
+pow_loop_3:
+    VMUL.F64 d2, d2, d0
+    SUBS r0, r0, #1
+    BNE pow_loop_3
+pow_done_3:
 
 ; Linha 8
     LDR r0, =const_14
