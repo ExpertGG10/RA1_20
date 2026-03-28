@@ -185,26 +185,21 @@ def parseExpressao(linha):
     return contexto["tokens"]
             
             
+def proximo_token_significativo(tokens, indice_atual):
+    for indice in range(indice_atual + 1, len(tokens)):
+        if tokens[indice] not in ['(', ')']:
+            return tokens[indice]
+    return None
+
 
 def executarExpressao(tokens):
     memoria = {}
     historico = []
     pilha = []
-    idx = 0
 
-    while idx < len(tokens):
-        token = tokens[idx]
-
-        if token == '(':
-            idx += 1
+    for indice, token in enumerate(tokens):
+        if token in ['(', ')']:
             continue
-
-        if token == ')':
-            if len(pilha) != 1:
-                raise ValueError(f"Parenteses fecham com pilha incorreta")
-            item = pilha.pop()
-            historico.append(item)
-            return item, memoria, historico
 
         if token in ['+', '-', '*', '/', '//', '%', '^']:
             if len(pilha) < 2:
@@ -212,7 +207,6 @@ def executarExpressao(tokens):
             pilha.pop()
             pilha.pop()
             pilha.append(f"({token})")
-            idx += 1
             continue
 
         if token == 'RES':
@@ -220,20 +214,16 @@ def executarExpressao(tokens):
                 raise ValueError("RES sem argumento")
             pilha.pop()
             pilha.append("(RES)")
-            idx += 1
             continue
 
-        if token == 'MEM':
-            if len(pilha) == 0:
-                raise ValueError("MEM sem identificador")
-            nome_var = pilha.pop()
-            pilha.append(f"(MEM {nome_var})")
-            idx += 1
-            continue
-
-        if token.isupper() and token not in ['RES', 'MEM']:
-            pilha.append(token)
-            idx += 1
+        if token.isupper() and token != 'RES':
+            proximo = proximo_token_significativo(tokens, indice)
+            if proximo is None and len(pilha) >= 1:
+                valor = pilha.pop()
+                memoria[token] = valor
+                pilha.append(f"(STORE {token})")
+            else:
+                pilha.append(f"(LOAD {token})")
             continue
 
         try:
@@ -242,42 +232,47 @@ def executarExpressao(tokens):
         except ValueError:
             raise ValueError(f"Token invalido: {token}")
 
-        idx += 1
+    if len(pilha) != 1:
+        raise ValueError("Expressao incompleta")
 
-    raise ValueError("Expressao incompleta")
+    item = pilha.pop()
+    historico.append(item)
+    return item, memoria, historico
 
 
 def gerarAssembly(tokens):
     """
-    Gera codigo ARM v7 VFP a partir de tokens RPN.
-    Usa registradores s0-s31 para ponto flutuante (IEEE 754 64-bit).
+    Gera codigo ARMv7 a partir dos tokens.
+    RES e identificadores em maiusculas acessam memoria.
+    Um identificador isolado como (MEM) gera leitura.
+    Um valor seguido de identificador como (42 MEM) gera escrita.
     """
-    linhas = []
-    pilha_regs = []
-    contador_reg = 0
-    contador_label = 0
-    memoria_vars = {}
-    
-    linhas.append(".text")
-    linhas.append(".align 4")
-    linhas.append("")
-    
-    for token in tokens:
-        if token == '(':
+    linhas = [
+        ".text",
+        ".align 4",
+        ".global main",
+        "main:",
+        ""
+    ]
+
+    pilha = []
+    reg_count = 0
+    mem_vars = {}
+    constantes = []
+
+    for indice, token in enumerate(tokens):
+        if token in ['(', ')']:
             continue
-            
-        if token == ')':
-            break
-            
+
         if token in ['+', '-', '*', '/', '//', '%', '^']:
-            if len(pilha_regs) < 2:
-                raise ValueError(f"Operador {token} sem operandos suficientes")
-            
-            reg_b = pilha_regs.pop()
-            reg_a = pilha_regs.pop()
-            reg_dest = f"s{contador_reg}"
-            contador_reg += 1
-            
+            if len(pilha) < 2:
+                raise ValueError(f"Operador {token} sem operandos")
+
+            reg_b = pilha.pop()
+            reg_a = pilha.pop()
+            reg_dest = f"d{reg_count}"
+            reg_count += 1
+
             if token == '+':
                 linhas.append(f"    VADD.F64 {reg_dest}, {reg_a}, {reg_b}")
             elif token == '-':
@@ -288,49 +283,94 @@ def gerarAssembly(tokens):
                 linhas.append(f"    VDIV.F64 {reg_dest}, {reg_a}, {reg_b}")
             elif token == '//':
                 linhas.append(f"    VDIV.F64 {reg_dest}, {reg_a}, {reg_b}")
-                linhas.append(f"    VCVT.S32.F64 d0, {reg_dest}")
-                linhas.append(f"    VCVT.F64.S32 {reg_dest}, d0")
+                linhas.append(f"    VCVT.S32.F64 s30, {reg_dest}")
+                linhas.append(f"    VCVT.F64.S32 {reg_dest}, s30")
             elif token == '%':
-                linhas.append(f"    VCVT.S32.F64 r0, {reg_a}")
-                linhas.append(f"    VCVT.S32.F64 r1, {reg_b}")
-                linhas.append(f"    MOD r0, r0, r1")
-                linhas.append(f"    VCVT.F64.S32 {reg_dest}, r0")
+                linhas.append(f"    VCVT.S32.F64 s30, {reg_a}")
+                linhas.append(f"    VCVT.S32.F64 s31, {reg_b}")
+                linhas.append("    VMOV r0, s30")
+                linhas.append("    VMOV r1, s31")
+                linhas.append("    BL __aeabi_idivmod")
+                linhas.append("    VMOV s30, r1")
+                linhas.append(f"    VCVT.F64.S32 {reg_dest}, s30")
             elif token == '^':
-                linhas.append(f"    MOV r0, #{reg_a}")
-                linhas.append(f"    MOV r1, #{reg_b}")
-                linhas.append(f"    BL pow")
-                linhas.append(f"    VMOV {reg_dest}, r0")
-            
-            pilha_regs.append(reg_dest)
-            
-        elif token == 'RES':
-            if len(pilha_regs) > 0:
-                pilha_regs.pop()
-            pilha_regs.append("s0")
-            
-        elif token == 'MEM':
-            if len(pilha_regs) > 0:
-                var_name = pilha_regs.pop()
-                if var_name not in memoria_vars:
-                    memoria_vars[var_name] = f"_var_{len(memoria_vars)}"
-                pilha_regs.append(f"s{contador_reg}")
-                contador_reg += 1
-            
-        else:
-            try:
-                valor = float(token)
-                reg_dest = f"s{contador_reg}"
-                contador_reg += 1
-                
-                linhas.append(f"    VLDR.F64 {reg_dest}, =#{valor}")
-                pilha_regs.append(reg_dest)
-                
-            except ValueError:
-                pass
-    
+                linhas.append(f"    VMOV r0, r1, {reg_a}")
+                linhas.append(f"    VMOV r2, r3, {reg_b}")
+                linhas.append("    BL pow")
+                linhas.append(f"    VMOV {reg_dest}, r0, r1")
+
+            pilha.append(reg_dest)
+            continue
+
+        if token == 'RES':
+            if len(pilha) == 0:
+                raise ValueError("RES sem argumento")
+
+            indice_reg = pilha.pop()
+            reg_dest = f"d{reg_count}"
+            reg_count += 1
+
+            linhas.append(f"    VCVT.S32.F64 s30, {indice_reg}")
+            linhas.append("    VMOV r0, s30")
+            linhas.append("    LDR r2, =historico_base")
+            linhas.append("    LDR r3, =historico_topo")
+            linhas.append("    LDR r3, [r3]")
+            linhas.append("    SUB r3, r3, r0")
+            linhas.append("    LSL r3, r3, #3")
+            linhas.append("    ADD r2, r2, r3")
+            linhas.append(f"    VLDR {reg_dest}, [r2]")
+
+            pilha.append(reg_dest)
+            continue
+
+        try:
+            valor = float(token)
+            reg_dest = f"d{reg_count}"
+            reg_count += 1
+            const_label = f"const_{len(constantes)}"
+            constantes.append((const_label, valor))
+            linhas.append(f"    LDR r0, ={const_label}")
+            linhas.append(f"    VLDR {reg_dest}, [r0]")
+            pilha.append(reg_dest)
+            continue
+        except ValueError:
+            pass
+
+        if token.isupper() and token != 'RES':
+            if token not in mem_vars:
+                mem_vars[token] = len(mem_vars) * 8
+
+            offset = mem_vars[token]
+            proximo = proximo_token_significativo(tokens, indice)
+
+            if proximo is None and len(pilha) >= 1:
+                valor_reg = pilha.pop()
+                linhas.append("    LDR r0, =memoria_base")
+                linhas.append(f"    ADD r0, r0, #{offset}")
+                linhas.append(f"    VSTR {valor_reg}, [r0]")
+                pilha.append(valor_reg)
+            else:
+                reg_dest = f"d{reg_count}"
+                reg_count += 1
+                linhas.append("    LDR r0, =memoria_base")
+                linhas.append(f"    ADD r0, r0, #{offset}")
+                linhas.append(f"    VLDR {reg_dest}, [r0]")
+                pilha.append(reg_dest)
+            continue
+
+        raise ValueError(f"Token invalido no assembly: {token}")
+
     linhas.append("")
     linhas.append("    BX LR")
-    
+    linhas.append("")
+    linhas.append(".data")
+    linhas.append("memoria_base: .space 256")
+    linhas.append("historico_base: .space 256")
+    linhas.append("historico_topo: .word 0")
+
+    for const_label, valor in constantes:
+        linhas.append(f"{const_label}: .double {valor}")
+
     return "\n".join(linhas)
 
 
