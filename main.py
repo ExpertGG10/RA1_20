@@ -374,8 +374,16 @@ def gerarAssembly(tokens):
     return "\n".join(linhas)
 
 
-def exibirResultados(resultado):
-    pass
+def exibirResultados(numero_linha, tokens, estrutura, memoria, historico, assembly):
+    print(f"Linha {numero_linha}:")
+    print(f"  Tokens: {tokens}")
+    print(f"  Estrutura: {estrutura}")
+    print(f"  Memoria: {memoria}")
+    print(f"  Historico: {historico}")
+    print("  Assembly gerado: sim")
+    if assembly:
+        print(f"  Linhas de assembly: {len(assembly.splitlines())}")
+
 
 def lerArquivo():
     if len(sys.argv) != 2:
@@ -397,17 +405,31 @@ def lerArquivo():
 
 def main():
     linhas = lerArquivo()
-    print(f"Resultados:{linhas}")
-    with open("resultados.txt", "w", encoding="utf-8") as f:
-            for i in linhas:
-                try:
-                    f.write(f"{parseExpressao(i)}\n")
-                except ErroLexico as erro:
-                    f.write(f"Erro lexico: {erro}\n")
+    blocos_assembly = []
 
+    with open("resultados.txt", "w", encoding="utf-8") as arquivo_resultados:
+        for numero_linha, linha in enumerate(linhas, start=1):
+            if not linha:
+                continue
 
-    
-    
+            try:
+                tokens = parseExpressao(linha)
+                estrutura, memoria, historico = executarExpressao(tokens)
+                assembly = gerarAssembly(tokens)
+
+                arquivo_resultados.write(f"Linha {numero_linha}: {tokens}\n")
+                blocos_assembly.append(f"; Linha {numero_linha}\n{assembly}")
+                exibirResultados(numero_linha, tokens, estrutura, memoria, historico, assembly)
+            except (ErroLexico, ValueError) as erro:
+                mensagem = f"Linha {numero_linha}: erro - {erro}"
+                print(mensagem)
+                arquivo_resultados.write(mensagem + "\n")
+
+    with open("assembly_gerado.txt", "w", encoding="utf-8") as arquivo_assembly:
+        arquivo_assembly.write("\n\n".join(blocos_assembly))
+
+    print("Assembly salvo em assembly_gerado.txt")
+
 
 if __name__ == "__main__":
     main()
