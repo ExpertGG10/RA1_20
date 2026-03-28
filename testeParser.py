@@ -1,10 +1,20 @@
 import main
 
-testes = ["(-3 + 4) * 5", "6.6.6 + 3 * 1", "((1 + 2) * (3 - 4)) / 5"]
+assert main.parseExpressao("(3.14 2.0 +)") == ['(', '3.14', '2.0', '+', ')']
+assert main.parseExpressao("(20 3 //)") == ['(', '20', '3', '//', ')']
+assert main.parseExpressao("(5 RES)") == ['(', '5', 'RES', ')']
+assert main.parseExpressao("(10.5 MEM)") == ['(', '10.5', 'MEM', ')']
 
+try:
+    main.parseExpressao("(3.14 2.0 &)")
+    assert False
+except main.ErroLexico:
+    pass
 
+try:
+    main.parseExpressao("((1 2 +)")
+    assert False
+except main.ErroLexico:
+    pass
 
-for expressao in testes:
-    resultado = main.parseExpressao(expressao)
-    print(f"Expressao: {expressao} -> Tokens: {resultado}")
-
+print("Testes lexico: OK")
