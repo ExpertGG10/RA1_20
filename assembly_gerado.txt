@@ -1,119 +1,49 @@
-; Linha 1
 .text
 .align 4
 .global main
 main:
 
+; Linha 1
     LDR r0, =const_0
     VLDR d0, [r0]
     LDR r0, =const_1
     VLDR d1, [r0]
     VADD.F64 d2, d0, d1
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double -3.0
-const_1: .double 4.0
-
 ; Linha 2
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_2
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_3
     VLDR d1, [r0]
     VSUB.F64 d2, d0, d1
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 10.0
-const_1: .double 2.0
-
 ; Linha 3
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_4
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_5
     VLDR d1, [r0]
     VMUL.F64 d2, d0, d1
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 6.0
-const_1: .double 7.0
-
 ; Linha 4
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_6
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_7
     VLDR d1, [r0]
     VDIV.F64 d2, d0, d1
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 20.0
-const_1: .double 5.0
-
 ; Linha 5
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_8
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_9
     VLDR d1, [r0]
     VDIV.F64 d2, d0, d1
     VCVT.S32.F64 s30, d2
     VCVT.F64.S32 d2, s30
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 20.0
-const_1: .double 3.0
-
 ; Linha 6
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_10
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_11
     VLDR d1, [r0]
     VCVT.S32.F64 s30, d0
     VCVT.S32.F64 s31, d1
@@ -123,86 +53,31 @@ main:
     VMOV s30, r1
     VCVT.F64.S32 d2, s30
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 20.0
-const_1: .double 3.0
-
 ; Linha 7
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_12
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_13
     VLDR d1, [r0]
     VMOV r0, r1, d0
     VMOV r2, r3, d1
     BL pow
     VMOV d2, r0, r1
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 2.0
-const_1: .double 3.0
-
 ; Linha 8
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_14
     VLDR d0, [r0]
-    LDR r0, =const_1
+    LDR r0, =const_15
     VLDR d1, [r0]
     VADD.F64 d2, d0, d1
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 9.5
-const_1: .double 1.5
-
 ; Linha 9
-.text
-.align 4
-.global main
-main:
-
-    LDR r0, =const_0
+    LDR r0, =const_16
     VLDR d0, [r0]
     LDR r0, =memoria_base
     ADD r0, r0, #0
     VSTR d0, [r0]
 
-    BX LR
-
-.data
-memoria_base: .space 256
-historico_base: .space 256
-historico_topo: .word 0
-const_0: .double 42.0
-
 ; Linha 10
-.text
-.align 4
-.global main
-main:
-
     LDR r0, =memoria_base
     ADD r0, r0, #0
     VLDR d0, [r0]
@@ -213,3 +88,20 @@ main:
 memoria_base: .space 256
 historico_base: .space 256
 historico_topo: .word 0
+const_0: .double -3.0
+const_1: .double 4.0
+const_2: .double 10.0
+const_3: .double 2.0
+const_4: .double 6.0
+const_5: .double 7.0
+const_6: .double 20.0
+const_7: .double 5.0
+const_8: .double 20.0
+const_9: .double 3.0
+const_10: .double 20.0
+const_11: .double 3.0
+const_12: .double 2.0
+const_13: .double 3.0
+const_14: .double 9.5
+const_15: .double 1.5
+const_16: .double 42.0
